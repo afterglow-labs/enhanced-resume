@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Thin alias: `er <name>` resumes a vaulted session. Resolves the plugin dir
+# relative to this script so it works whether called from PATH or by full path.
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec python3 "$here/ervault" resume "$@"
