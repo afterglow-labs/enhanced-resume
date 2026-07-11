@@ -82,6 +82,44 @@ def cmd_lookup(a):
         sys.exit(1)
     print(json.dumps(row))
 
+def handoff_path(name):
+    return os.path.join(vault_dir(), name, "HANDOFF.md")
+
+def cmd_lookup_session(a):
+    for s in load_index()["sessions"]:
+        if s["id"] == a.id:
+            print(f"{s['name']}\t{handoff_path(s['name'])}")
+            return
+    sys.exit(1)
+
+def _closest(name):
+    names = [s["name"] for s in load_index()["sessions"]]
+    lo = name.lower()
+    return [n for n in names if lo in n.lower()] or names
+
+def cmd_resume(a):
+    row = find(a.name)
+    if not row:
+        sys.stderr.write("unknown session '%s'. Did you mean: %s\n"
+                         % (a.name, ", ".join(_closest(a.name)) or "(vault empty)"))
+        sys.exit(1)
+    hp = handoff_path(row["name"])
+    instr = f"Read your handoff at {hp} before doing anything else."
+    if row["agent"] == "codex":
+        cmd = ["codex", "resume", row["id"], instr]
+    else:
+        cmd = ["claude", "--resume", row["id"]]
+    if a.print_only:
+        # shell-quote for display/clipboard
+        import shlex
+        print(" ".join(shlex.quote(c) for c in cmd))
+        return
+    if os.path.isdir(row["cwd"]):
+        os.chdir(row["cwd"])
+    else:
+        sys.stderr.write("warning: saved cwd %s missing; resuming from here\n" % row["cwd"])
+    os.execvp(cmd[0], cmd)
+
 def main():
     p = argparse.ArgumentParser(prog="ervault")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -90,6 +128,9 @@ def main():
         pa.add_argument(f"--{flag}", required=True)
     sub.add_parser("list").set_defaults(fn=cmd_list)
     pl = sub.add_parser("lookup"); pl.add_argument("name"); pl.set_defaults(fn=cmd_lookup)
+    ps = sub.add_parser("lookup-session"); ps.add_argument("id"); ps.set_defaults(fn=cmd_lookup_session)
+    pr = sub.add_parser("resume"); pr.add_argument("name")
+    pr.add_argument("--print-only", action="store_true"); pr.set_defaults(fn=cmd_resume)
     args = p.parse_args()
     args.fn(args)
 
