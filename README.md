@@ -20,14 +20,14 @@ your choice via Claude Code's normal load options.
 From inside Claude Code:
 
 ```
-/plugin marketplace add xuninc/enhanced-resume
+/plugin marketplace add afterglow-labs/enhanced-resume
 /plugin install enhanced-resume@enhanced-resume
 ```
 
 Or clone and load it directly:
 
 ```bash
-git clone https://github.com/xuninc/enhanced-resume.git
+git clone https://github.com/afterglow-labs/enhanced-resume.git
 claude --plugin-dir /path/to/enhanced-resume
 ```
 
