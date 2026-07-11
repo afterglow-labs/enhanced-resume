@@ -2,7 +2,7 @@
 # SKILLS is extended as skills land (Task 5: save. Task 6: + continue sessions).
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
-SKILLS=(save)
+SKILLS=(save continue sessions)
 fail=0
 for s in "${SKILLS[@]}"; do
   f="$root/skills/$s/SKILL.md"
