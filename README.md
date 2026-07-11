@@ -17,15 +17,30 @@ your choice via Claude Code's normal load options.
 
 ## Install
 
-Add the plugin (marketplace or `--plugin-dir`). Put `bin/` on your PATH so `er`
-works from anywhere:
+From inside Claude Code:
 
-```bash
-echo 'export PATH="$PATH:'"$HOME"'/projects/enhanced-resume/bin"' >> ~/.zshrc
+```
+/plugin marketplace add xuninc/enhanced-resume
+/plugin install enhanced-resume@enhanced-resume
 ```
 
-(Adjust the path if the plugin lives elsewhere, e.g. under
-`~/.claude/plugins/...` when marketplace-installed.)
+Or clone and load it directly:
+
+```bash
+git clone https://github.com/xuninc/enhanced-resume.git
+claude --plugin-dir /path/to/enhanced-resume
+```
+
+Then put `bin/` on your PATH so `er` works from any terminal:
+
+```bash
+echo 'export PATH="$PATH:/path/to/enhanced-resume/bin"' >> ~/.zshrc
+```
+
+(When marketplace-installed the plugin lives under
+`~/.claude/plugins/cache/`, e.g.
+`~/.claude/plugins/cache/enhanced-resume/enhanced-resume/bin` — point PATH
+there instead.)
 
 ## Codex support
 

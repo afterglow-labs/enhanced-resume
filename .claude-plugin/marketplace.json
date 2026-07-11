@@ -1,0 +1,11 @@
+{
+  "name": "enhanced-resume",
+  "owner": { "name": "Corey Hamilton" },
+  "plugins": [
+    {
+      "name": "enhanced-resume",
+      "source": "./",
+      "description": "Name your most important Claude Code and Codex sessions and get back to them — full or summary — with a self-written handoff injected on resume."
+    }
+  ]
+}
