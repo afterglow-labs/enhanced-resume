@@ -1,3 +1,4 @@
 # Docs stay LOCAL + NAS only — never a remote repo.
 docs/
 .DS_Store
+__pycache__/
