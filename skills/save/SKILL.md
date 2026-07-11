@@ -18,6 +18,11 @@ Do this now, in order:
      without `.jsonl`. Tell the user you inferred it.
 2. **Gather metadata.** Current dir: `pwd`. Git branch (if any):
    `git branch --show-current 2>/dev/null`.
+   Note: `--cwd` must be the directory the session was LAUNCHED from —
+   `claude --resume` only finds sessions belonging to that directory's project.
+   `ervault add` cross-checks the id against `~/.claude/projects/` and corrects
+   the cwd from the transcript if the shell has since cd'd elsewhere, so `pwd`
+   is just the fallback for when no transcript is found.
 3. **Record it in the index FIRST** — this creates (and, if the name was already
    vaulted, rotates) the directory, and prints the authoritative path to write
    into. Run, quoting every value:

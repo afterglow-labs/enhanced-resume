@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """enhanced-resume vault CLI. Owns the vault index and resume dispatch."""
-import argparse, json, os, re, sys, shutil
+import argparse, glob, json, os, re, sys, shutil
 from datetime import datetime, timezone
 
 def vault_dir():
@@ -50,14 +50,48 @@ def rotate(name):
                   os.path.join(vault_dir(), f"{name}.{i}"))
     os.rename(base, os.path.join(vault_dir(), f"{name}.1"))
 
+def _projects_dir():
+    return os.path.join(os.path.expanduser("~"), ".claude", "projects")
+
+def _transcript_cwd(sid):
+    """Launch cwd recorded inside the session's transcript, or None."""
+    for p in glob.glob(os.path.join(_projects_dir(), "*", sid + ".jsonl")):
+        try:
+            with open(p) as f:
+                for line in f:
+                    try:
+                        d = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if d.get("cwd"):
+                        return d["cwd"]
+        except OSError:
+            continue
+    return None
+
+def resolve_claude_cwd(sid, stored):
+    """claude --resume only finds sessions belonging to the cwd's project dir,
+    so a stored cwd that doesn't hold the transcript is corrected from the
+    transcript itself. Keeps `stored` when no transcript is found (fake ids,
+    cleaned-up sessions)."""
+    munged = re.sub(r"[^A-Za-z0-9]", "-", stored)
+    if os.path.exists(os.path.join(_projects_dir(), munged, sid + ".jsonl")):
+        return stored
+    return _transcript_cwd(sid) or stored
+
 def cmd_add(a):
     name = sanitize(a.name)
+    cwd = a.cwd
+    if a.agent != "codex":
+        cwd = resolve_claude_cwd(a.id, a.cwd)
+        if cwd != a.cwd:
+            sys.stderr.write("note: cwd corrected to session launch dir %s\n" % cwd)
     idx = load_index()
     idx["sessions"] = [s for s in idx["sessions"] if s["name"].lower() != name.lower()]
     rotate(name)
     d = os.path.join(vault_dir(), name)
     os.makedirs(d, exist_ok=True)
-    row = {"name": name, "agent": a.agent, "id": a.id, "cwd": a.cwd,
+    row = {"name": name, "agent": a.agent, "id": a.id, "cwd": cwd,
            "branch": a.branch, "savedAt": datetime.now(timezone.utc).isoformat(),
            "oneliner": a.oneliner}
     with open(os.path.join(d, "meta.json"), "w") as f:
@@ -105,19 +139,23 @@ def cmd_resume(a):
         sys.exit(1)
     hp = handoff_path(row["name"])
     instr = f"Read your handoff at {hp} before doing anything else."
+    cwd = row["cwd"]
     if row["agent"] == "codex":
         cmd = ["codex", "resume", row["id"], instr]
     else:
         cmd = ["claude", "--resume", row["id"]]
+        cwd = resolve_claude_cwd(row["id"], cwd)  # self-heal pre-fix records
     if a.print_only:
-        # shell-quote for display/clipboard
+        # shell-quote for display/clipboard; the cd matters — claude scopes
+        # --resume to the project of the directory it starts in
         import shlex
-        print(" ".join(shlex.quote(c) for c in cmd))
+        print("cd %s && %s" % (shlex.quote(cwd),
+                               " ".join(shlex.quote(c) for c in cmd)))
         return
-    if os.path.isdir(row["cwd"]):
-        os.chdir(row["cwd"])
+    if os.path.isdir(cwd):
+        os.chdir(cwd)
     else:
-        sys.stderr.write("warning: saved cwd %s missing; resuming from here\n" % row["cwd"])
+        sys.stderr.write("warning: saved cwd %s missing; resuming from here\n" % cwd)
     os.execvp(cmd[0], cmd)
 
 def main():
