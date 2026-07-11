@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+"""enhanced-resume vault CLI. Owns the vault index and resume dispatch."""
+import argparse, json, os, re, sys, shutil
+from datetime import datetime, timezone
+
+def vault_dir():
+    d = os.environ.get("ER_VAULT_DIR")
+    if not d:
+        d = os.path.join(os.path.expanduser("~"), ".claude", "session-vault")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+def index_path():
+    return os.path.join(vault_dir(), "index.json")
+
+def load_index():
+    p = index_path()
+    if not os.path.exists(p):
+        return {"sessions": []}
+    try:
+        with open(p) as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return {"sessions": []}
+
+def save_index(idx):
+    p = index_path()
+    tmp = p + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(idx, f, indent=2)
+    os.replace(tmp, p)  # atomic
+
+def sanitize(name):
+    s = re.sub(r"[^A-Za-z0-9_-]", "_", name.strip())
+    if not s:
+        raise SystemExit("error: name is empty after sanitizing")
+    return s
+
+def rotate(name):
+    """Move existing <name> dir to <name>.1 (bumping any existing .N)."""
+    base = os.path.join(vault_dir(), name)
+    if not os.path.isdir(base):
+        return
+    n = 1
+    while os.path.exists(os.path.join(vault_dir(), f"{name}.{n}")):
+        n += 1
+    # shift .{n-1}..1 up by one so .1 is always the most recent previous
+    for i in range(n, 1, -1):
+        os.rename(os.path.join(vault_dir(), f"{name}.{i-1}"),
+                  os.path.join(vault_dir(), f"{name}.{i}"))
+    os.rename(base, os.path.join(vault_dir(), f"{name}.1"))
+
+def cmd_add(a):
+    name = sanitize(a.name)
+    idx = load_index()
+    idx["sessions"] = [s for s in idx["sessions"] if s["name"].lower() != name.lower()]
+    rotate(name)
+    d = os.path.join(vault_dir(), name)
+    os.makedirs(d, exist_ok=True)
+    row = {"name": name, "agent": a.agent, "id": a.id, "cwd": a.cwd,
+           "branch": a.branch, "savedAt": datetime.now(timezone.utc).isoformat(),
+           "oneliner": a.oneliner}
+    with open(os.path.join(d, "meta.json"), "w") as f:
+        json.dump(row, f, indent=2)
+    idx["sessions"].append(row)
+    save_index(idx)
+    print(d)
+
+def find(name):
+    for s in load_index()["sessions"]:
+        if s["name"].lower() == name.strip().lower():
+            return s
+    return None
+
+def cmd_list(a):
+    rows = sorted(load_index()["sessions"], key=lambda s: s["savedAt"], reverse=True)
+    print(json.dumps(rows, indent=2))
+
+def cmd_lookup(a):
+    row = find(a.name)
+    if not row:
+        sys.exit(1)
+    print(json.dumps(row))
+
+def main():
+    p = argparse.ArgumentParser(prog="ervault")
+    sub = p.add_subparsers(dest="cmd", required=True)
+    pa = sub.add_parser("add"); pa.set_defaults(fn=cmd_add)
+    for flag in ("name", "agent", "id", "cwd", "branch", "oneliner"):
+        pa.add_argument(f"--{flag}", required=True)
+    sub.add_parser("list").set_defaults(fn=cmd_list)
+    pl = sub.add_parser("lookup"); pl.add_argument("name"); pl.set_defaults(fn=cmd_lookup)
+    args = p.parse_args()
+    args.fn(args)
+
+if __name__ == "__main__":
+    main()
