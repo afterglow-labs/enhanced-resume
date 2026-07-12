@@ -1,6 +1,6 @@
 {
   "name": "enhanced-resume",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Name your most important Claude Code and Codex sessions and get back to them — full or summary — with a self-written handoff injected on resume.",
   "author": { "name": "Corey Hamilton" }
 }
