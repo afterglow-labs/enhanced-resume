@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh\"",
+            "command": "_R=\"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT:-}}\"; _C=\"${CODEX_HOME:-$HOME/.codex}\"; if [ ! -f \"${_R}/hooks/session-start.sh\" ]; then _B=\"$_C/plugins/cache/enhanced-resume/enhanced-resume\"; _R=$(find \"$_B\" -mindepth 1 -maxdepth 1 -type d -exec ls -dt {} + 2>/dev/null | head -n 1); fi; if [ ! -f \"${_R}/hooks/session-start.sh\" ]; then _R=\"$_C/.tmp/marketplaces/enhanced-resume\"; fi; [ -f \"${_R}/hooks/session-start.sh\" ] || { echo \"enhanced-resume: plugin scripts not found\" >&2; exit 1; }; export CLAUDE_PLUGIN_ROOT=\"$_R\"; bash \"$_R/hooks/session-start.sh\"",
             "timeout": 10
           }
         ]
